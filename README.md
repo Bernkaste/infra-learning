@@ -1,6 +1,6 @@
 # infra-learning
 
-- リポジトリ構成（Directory layout）
+- リポジトリ構成：
     - `aws-terraform/`
         - AWSインフラをTerraformで管理するメイン（VPC/IAM/ECS/ECR/Logsなど）
         - `README.md`（Terraform実行手順：init/plan/apply/destroy、前提、注意点）
@@ -14,12 +14,12 @@
         - ロールバック手順、監視/アラート方針、ポストモーテム雛形などもここに集約
     - `README.md`（このリポジトリの入口）
 
-- Goal
+- 目的：
     - AWS設計 × Terraform × 運用改善を「説明できる」だけじゃなく「手を動かして再現できる」状態にする（転職で語れる実績を作る）。
     - 12週間で、AWSの基本構成（ネットワーク〜ECS）を IaC（Terraform）で構築→破棄まで通し、CI/CD・OIDC・監視・ロールバック・改善（Before/After）まで一連で触れる。
     - 成果がGitHub上で第三者に伝わる（README/設計図/運用メモ/改善記録が揃っている）状態にする。
 
-- Done（完成形 / Deliverables）
+- 完了条件：
     - リポジトリ構造が整っている（例：`aws-terraform/`, `app/`, `docs/`）。
     - Terraformで以下を再現できる（applyで作成→コンソールで確認→destroyで片付く）
         - 最小成功：S3（＋destroy）
@@ -43,7 +43,7 @@
     - 転職接続
         - 想定QA10問＋職務経歴書に載せる文章が用意できている
 
-- Weekly plan skeleton（週次計画の骨子）
+- 週次計画：
     - Week 0：環境準備・課金ガード・GitHub準備（作業フォルダ / AWSアラート / repo）
     - Week 1：Terraform最小成功（公式チュートリアル→S3→destroy→手順をREADME化）
     - Week 2：AWSネットワーク基礎（VPC/サブネット/IGW/RouteをTerraformで構築＋図解）
@@ -57,3 +57,8 @@
     - Week 10：改善テーマ選定→Before/Afterを指標付きで残す
     - Week 11：成果の言語化（README/構成図/設計意図を面接水準に）
     - Week 12：転職接続（想定QA/職務経歴書用の文章作成）
+
+- 各成果物リンク
+　　- docs/setup-awscli.md (AWS CLIの準備)
+　　- docs/terraform-basics.md (init/plan/apply/destroyの流れ)
+　　- docs/s3.md (s3作成→確認の流れ)
