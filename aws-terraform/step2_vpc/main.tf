@@ -33,7 +33,7 @@ resource "aws_internet_gateway" "main" {
 
 resource "aws_subnet" "public" {
   vpc_id                  = aws_vpc.main.id
-  cidr_block              = "10.0.1.0/24"
+  cidr_block              = var.public_subnet_cidr
   availability_zone       = "ap-northeast-1a"
   map_public_ip_on_launch = true
 
@@ -59,6 +59,30 @@ resource "aws_route" "public_default" {
 resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public.id
   route_table_id = aws_route_table.public.id
+}
+
+resource "aws_subnet" "private" {
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = var.private_subnet_cidr
+  availability_zone       = "ap-northeast-1a"
+  map_public_ip_on_launch = false
+  tags = {
+    Name = "${var.project_name}-private-subnet"
+  }
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+  tags = {
+    Name = "${var.project_name}-private-rt"
+  }
+}
+
+# NATは作らないので default route（0.0.0.0/0）は作らない
+# これにより Private Subnet はインターネットへ出ない（＝意図どおり）
+resource "aws_route_table_association" "private" {
+  subnet_id      = aws_subnet.private.id
+  route_table_id = aws_route_table.private.id
 }
 
 resource "aws_security_group" "ec2" {
