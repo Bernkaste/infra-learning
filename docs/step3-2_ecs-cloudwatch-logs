@@ -1,0 +1,206 @@
+ファイル名案：`docs/ecs-cloudwatch-logs-minimum.md`
+
+---
+
+# ECS(Fargate) → CloudWatch Logs でログを見る導線（最小構成）
+
+## 目的 / Done（完了条件）
+
+このドキュメントのゴールは「ECS(Fargate)で動くコンテナのログが CloudWatch Logs に届き、初見でも迷わず見に行ける状態」を作ること。
+
+Done は次の3つを満たしたらOK。
+
+1. CloudWatch Logs にロググループが存在する  
+    - 例：`/ecs/infra-learning/nginx`
+    - Retention（保持期間）は検証用に最短（例：1 day）
+2. ECS(Fargate) のタスクがそのロググループへログを出力している  
+    - タスク定義で `awslogs` を設定済み（log group / region / stream prefix が一致）
+    - CloudWatch Logs 上でログが1行以上確認できる（nginx起動ログなど）
+3. ログの見方（導線）が文章として固定されている  
+    - どの Log group を見るか
+    - Log stream の見つけ方（最新を開く）
+    - 最初に検索するキーワード（例：`error`, `exception`）
+
+---
+
+## ざっくり全体像（人に説明する用）
+
+- CloudWatch Logs：ログの保管庫（フォルダ＝Log group、ファイル群＝Log stream）
+- ECS/Fargate：コンテナを動かす実行基盤
+- Task Definition：コンテナの実行仕様書（イメージ、CPU/Memory、ログ設定など）
+- Service：タスクを「常にN個」維持して起動し続ける運用機能（今回N=1）
+- `awslogs`：コンテナの stdout/stderr を CloudWatch Logs に配送する設定
+- Task execution role：ECSがCloudWatch Logsへ書き込むための権限（許可証）
+- VPC/Subnet/Security Group：タスクが動く場所（住所）と通信制御（門番）
+
+---
+
+## 前提（このドキュメントの想定）
+
+- リージョン：`ap-northeast-1`（東京）
+- アプリがまだ無くても進められるように、検証は `nginx:latest` を使う
+    
+    （後続ステップで自作アプリに差し替える前提）
+    
+- ネットワークはデフォルトVPCでOK（ログ導線の検証が主目的のため）
+
+---
+
+## 固定する名前（迷子防止）
+
+例として以下で統一（好きに変えてOKだが途中で変えない）。
+
+- ECS Cluster：`infra-learning`
+- Task Definition：`nginx-log-test`
+- Service：`nginx-log-test-svc`
+- CloudWatch Log group：`/ecs/infra-learning/nginx`
+- Log stream prefix：`ecs`
+- Retention：最短（例：1 day）
+
+---
+
+## 手順（最短でログが見えるまで）
+
+### 1. CloudWatch Logs：ロググループ作成（置き場所を先に作る）
+
+1. CloudWatch → Logs → Log groups
+2. Create log group
+3. Name：`/ecs/infra-learning/nginx`
+4. Retention を最短（例：1 day）に設定
+
+ポイント：
+
+- 「どこを見るか」を固定するため、先にLog groupを作る
+
+---
+
+### 2. ECS：クラスター作成（管理の箱）
+
+1. ECS → Clusters → Create cluster
+2. Name：`infra-learning`
+
+ポイント：
+
+- クラスター自体は課金の本体ではない（主に課金されるのは“動いているタスク”）
+
+---
+
+### 3. ECS：タスク定義作成（nginx + awslogs）
+
+1. ECS → Task definitions → Create new task definition（Fargate）
+2. Task definition name：`nginx-log-test`
+3. Task execution role を設定  
+    - コンソールで「新規作成（推奨）」が出るならそれを選ぶ
+    - 既存ロールを使う場合、CloudWatch Logs への書き込み権限が必要（後述）
+4. CPU/Memory は最小でOK（例：0.25 vCPU / 0.5GB）
+5. Container 追加  
+    - Name：`nginx`
+    - Image：`nginx:latest`
+　　- タスク定義のコンテナ設定で「CloudWatch Logs に送る設定（awslogs）」を有効化する
+    　- コンテナ定義の `logConfiguration` が `awslogs` になっていること
+    　- `awslogs-group`：`/ecs/infra-learning/nginx`
+    　- `awslogs-region`：`ap-northeast-1`
+    　- `awslogs-stream-prefix`：`ecs`
+
+補足：
+- ECSコンソール上の表示は時期/画面によって「Logging」「Log configuration」「CloudWatch Logs」など表記が揺れるため、最終的にはタスク定義JSONで `awslogs` が入っているかを確認する
+
+ポイント：
+
+- `awslogs` が「ログ配送の配線」
+- ここがズレると「タスクは動くのにログが出ない」が起きる
+
+---
+
+### 4. ECS：サービス作成（Desired tasks=1で起動）
+
+1. ECS → Clusters → `infra-learning`
+2. Services → Create
+3. Launch type：Fargate
+4. Task definition：`nginx-log-test`
+5. Service name：`nginx-log-test-svc`
+6. Desired tasks：`1`
+7. Networking（最短で通す）
+    - VPC：default
+    - Subnets：複数選べるなら複数
+    - Auto-assign public IP：`ENABLED`
+    - Security group：新規作成でOK
+        - Inbound に HTTP 80 を追加する場合、Source は “My IP” 推奨
+        - 注意：IPは CIDR で書く（例：`〇〇.〇〇.〇〇.〇〇/32`）
+
+ポイント：
+
+- ログ導線の目的だけなら HTTP を開けなくても成立する
+    
+    （ただし疎通確認しやすいので80を開けるのはアリ）
+    
+
+---
+
+### 5. CloudWatch Logs：ログ確認（合格判定）
+
+1. CloudWatch → Logs → Log groups
+2. `/ecs/infra-learning/nginx` を開く
+3. Log streams を開く
+4. Last event time が最新の stream を開く
+5. nginxのログが1行以上見えることを確認
+
+ここまでで Done。
+
+---
+
+## ログの「見に行き方」テンプレ（運用メモ）
+
+- Log group：`/ecs/infra-learning/nginx`
+- Log stream：最新（`Last event time` が最新のもの）
+- Stream 名の例：`ecs/nginx/<task-id>`
+- まず検索：`error` / `exception`
+
+---
+
+## 詰まったときの最短切り分け
+
+### タスクが RUNNING にならない
+
+- ECS → Cluster → Service → Events を見る
+    
+    （ネットワーク/権限/リソース不足などが出る）
+    
+
+### RUNNING なのに Log stream が出ない
+
+- タスク定義の Logging が `awslogs` になっているか
+- Log group 名・Region・Stream prefix の一致
+- Task execution role の権限不足を疑う
+
+---
+
+## 必要な権限（最低限の考え方）
+
+ECSがCloudWatch Logsへ書き込むには、Task execution role に少なくとも以下が必要。
+
+- `logs:CreateLogStream`
+- `logs:PutLogEvents`
+
+※コンソール操作で詰まりやすいのはユーザー側の `iam:PassRole` や IAM操作権限不足。権限設計は環境ごとに異なるため、まずは「ECS作成」「Logs閲覧」ができる状態を優先する。
+
+---
+
+## 検証後の削除（課金停止を優先）
+
+最優先で消す（放置すると課金につながる）：
+
+1. ECS Service（Desired tasks を 0 → Service Delete）  
+    
+    → RUNNING Tasks が 0 になる = Fargate課金が止まる
+    
+2. （もし作っていたら）ALB / Target Group / Listener
+3. （もし作っていたら）NAT Gateway / Elastic IP（最優先で削除）
+
+残してOK（課金ほぼ無し、後で流用しやすい）：
+
+- Task definition（awslogs設定入りの雛形）
+- CloudWatch Logs の Log group（Retention を最短にしておけば影響小）
+- IAM role（execution role）
+
+---
