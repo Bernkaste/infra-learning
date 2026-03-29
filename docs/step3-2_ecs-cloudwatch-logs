@@ -4,9 +4,7 @@
 
 ## 目的 / Done（完了条件）
 
-このドキュメントのゴールは「ECS(Fargate)で動くコンテナのログが CloudWatch Logs に届き、初見でも迷わず見に行ける状態」を作ること。
-
-Done は次の3つを満たしたらOK。
+*このドキュメントのゴールは「ECS(Fargate)で動くコンテナのログが CloudWatch Logs に届き、初見でも迷わず見に行ける状態」を作ること。Done は次の3つを満たしたらOK。*
 
 1. CloudWatch Logs にロググループが存在する  
     - 例：`/ecs/infra-learning/nginx`
@@ -46,7 +44,7 @@ Done は次の3つを満たしたらOK。
 
 ## 固定する名前（迷子防止）
 
-例として以下で統一（好きに変えてOKだが途中で変えない）。
+*例として以下で統一（好きに変えてOKだが途中で変えない）。*
 
 - ECS Cluster：`infra-learning`
 - Task Definition：`nginx-log-test`
@@ -94,13 +92,14 @@ Done は次の3つを満たしたらOK。
 5. Container 追加  
     - Name：`nginx`
     - Image：`nginx:latest`
-　　- タスク定義のコンテナ設定で「CloudWatch Logs に送る設定（awslogs）」を有効化する
-    　- コンテナ定義の `logConfiguration` が `awslogs` になっていること
-    　- `awslogs-group`：`/ecs/infra-learning/nginx`
-    　- `awslogs-region`：`ap-northeast-1`
-    　- `awslogs-stream-prefix`：`ecs`
+    - タスク定義のコンテナ設定で「CloudWatch Logs に送る設定（awslogs）」を有効化する
+        - コンテナ定義の `logConfiguration` が `awslogs` になっていること
+        - `awslogs-group`：`/ecs/infra-learning/nginx`
+        - `awslogs-region`：`ap-northeast-1`
+        - `awslogs-stream-prefix`：`ecs`
 
 補足：
+
 - ECSコンソール上の表示は時期/画面によって「Logging」「Log configuration」「CloudWatch Logs」など表記が揺れるため、最終的にはタスク定義JSONで `awslogs` が入っているかを確認する
 
 ポイント：
@@ -118,7 +117,7 @@ Done は次の3つを満たしたらOK。
 4. Task definition：`nginx-log-test`
 5. Service name：`nginx-log-test-svc`
 6. Desired tasks：`1`
-7. Networking（最短で通す）
+7. Networking（最短で通す）  
     - VPC：default
     - Subnets：複数選べるなら複数
     - Auto-assign public IP：`ENABLED`
@@ -175,7 +174,7 @@ Done は次の3つを満たしたらOK。
 
 ## 必要な権限（最低限の考え方）
 
-ECSがCloudWatch Logsへ書き込むには、Task execution role に少なくとも以下が必要。
+*ECSがCloudWatch Logsへ書き込むには、Task execution role に少なくとも以下が必要。*
 
 - `logs:CreateLogStream`
 - `logs:PutLogEvents`
@@ -186,7 +185,7 @@ ECSがCloudWatch Logsへ書き込むには、Task execution role に少なくと
 
 ## 検証後の削除（課金停止を優先）
 
-最優先で消す（放置すると課金につながる）：
+*最優先で消す（放置すると課金につながる）：*
 
 1. ECS Service（Desired tasks を 0 → Service Delete）  
     
@@ -195,7 +194,7 @@ ECSがCloudWatch Logsへ書き込むには、Task execution role に少なくと
 2. （もし作っていたら）ALB / Target Group / Listener
 3. （もし作っていたら）NAT Gateway / Elastic IP（最優先で削除）
 
-残してOK（課金ほぼ無し、後で流用しやすい）：
+*残してOK（課金ほぼ無し、後で流用しやすい）：*
 
 - Task definition（awslogs設定入りの雛形）
 - CloudWatch Logs の Log group（Retention を最短にしておけば影響小）
