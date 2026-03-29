@@ -1,10 +1,8 @@
----
-
 # ECS(Fargate) → CloudWatch Logs でログを見る導線（最小構成）
 
 ## 目的 / Done（完了条件）
 
-*このドキュメントのゴールは「ECS(Fargate)で動くコンテナのログが CloudWatch Logs に届き、初見でも迷わず見に行ける状態」を作ること。Done は次の3つを満たしたらOK。*
+このドキュメントのゴールは「ECS(Fargate)で動くコンテナのログが CloudWatch Logs に届き、初見でも迷わず見に行ける状態」を作ること。Done は次の3つを満たしたらOK。
 
 1. CloudWatch Logs にロググループが存在する  
     - 例：`/ecs/infra-learning/nginx`
@@ -44,7 +42,7 @@
 
 ## 固定する名前（迷子防止）
 
-*例として以下で統一（好きに変えてOKだが途中で変えない）。*
+例として以下で統一（好きに変えてOKだが途中で変えない）。
 
 - ECS Cluster：`infra-learning`
 - Task Definition：`nginx-log-test`
@@ -174,7 +172,7 @@
 
 ## 必要な権限（最低限の考え方）
 
-*ECSがCloudWatch Logsへ書き込むには、Task execution role に少なくとも以下が必要。*
+ECSがCloudWatch Logsへ書き込むには、Task execution role に少なくとも以下が必要。
 
 - `logs:CreateLogStream`
 - `logs:PutLogEvents`
@@ -185,7 +183,7 @@
 
 ## 検証後の削除（課金停止を優先）
 
-*最優先で消す（放置すると課金につながる）：*
+最優先で消す（放置すると課金につながる）：
 
 1. ECS Service（Desired tasks を 0 → Service Delete）  
     
@@ -194,7 +192,7 @@
 2. （もし作っていたら）ALB / Target Group / Listener
 3. （もし作っていたら）NAT Gateway / Elastic IP（最優先で削除）
 
-*残してOK（課金ほぼ無し、後で流用しやすい）：*
+残してOK（課金ほぼ無し、後で流用しやすい）：
 
 - Task definition（awslogs設定入りの雛形）
 - CloudWatch Logs の Log group（Retention を最短にしておけば影響小）
