@@ -6,9 +6,8 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: health-app
+    env:
+      PYTHONPATH: $ github.workspace /health-app
 
     steps:
       - name: Checkout
@@ -29,7 +28,7 @@ jobs:
         run: |
           pwd
           ls -la
-          python -c "import sys; print('n'.join(sys.path))"
+          python -c "import sys; print(sys.path)"
           ls -la app.py
         
       - name: Run tests  
