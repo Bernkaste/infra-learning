@@ -1,0 +1,48 @@
+name: CI
+on:
+  push: 
+  pull_request:
+    
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+        
+      - name: Install dependencies
+        working-directory: health-app
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install -r requirements-dev.txt
+
+      - name: Debug (sys.path)
+        working-directory: health-app
+        run: |
+          pwd
+          ls -la
+          python -c "import sys; print(sys.path)"
+        
+      - name: Run tests
+        working-directory: health-app
+        run: |
+          python -m pytest -q
+    
+  docker-build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout  
+        uses: actions/checkout@v4
+        
+      - name: Build Docker image (sanity check)  
+        working-directory: health-app
+        run: |
+          docker build -t health-app:ci .
