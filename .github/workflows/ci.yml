@@ -28,6 +28,13 @@ jobs:
       - name: Run tests  
         run: |
           pytest -q
+
+      - name: Debug (pwd + files)
+        run: |
+          pwd
+          ls -la
+          python -c "import sys; print('n'.join(sys.path))"
+          ls -la app.py
     
   docker-build:
     runs-on: ubuntu-latest
