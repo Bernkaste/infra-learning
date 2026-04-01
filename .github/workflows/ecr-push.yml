@@ -33,6 +33,7 @@ jobs:
           ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
           IMAGE_TAG_SHA: ${{ github.sha }}
         run: |
+          cd health-app
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA .
           docker tag  $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA $ECR_REGISTRY/$ECR_REPOSITORY:latest
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG_SHA
