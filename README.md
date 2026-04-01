@@ -59,9 +59,9 @@
     - Week 12：転職接続（想定QA/職務経歴書用の文章作成）
 
 - 各成果物リンク
-　　- docs/setup-awscli.md (AWS CLIの準備)
-　　- docs/terraform-basics.md (init/plan/apply/destroyの流れ)
-　　- docs/s3.md (s3作成→確認の流れ)
+    - docs/setup-awscli.md (AWS CLIの準備)
+    - docs/terraform-basics.md (init/plan/apply/destroyの流れ)
+    - docs/s3.md (s3作成→確認の流れ)
     - docs/vpc-basics.md
     - docs/step2_terraform-vpc.md
     - docs/iam-privilege-guide.md
