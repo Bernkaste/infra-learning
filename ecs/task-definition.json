@@ -1,0 +1,18 @@
+{
+  "family": "health-app-task",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "arn:aws:iam::077024045672:role/ecsTaskExecutionRole",
+  "containerDefinitions": [
+    {
+      "name": "health-app",
+      "image": "077024045672.dkr.ecr.ap-northeast-1.amazonaws.com/health-app:latest",
+      "essential": true,
+      "portMappings": [
+        { "containerPort": 8080, "protocol": "tcp" }
+      ]
+    }
+  ]
+}
