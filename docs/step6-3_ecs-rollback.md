@@ -15,7 +15,7 @@
 ## 1. この環境の固定値（Step6-1 / Step6-2より）
 
 - AWS Region: `ap-northeast-1`
-- AWS Account ID: `077024045672`
+- AWS Account ID: `<AWS_ACCOUNT_ID>`
 - ECR repo: `health-app`
 - ECS Cluster: `infra-learning`
 - ECS Service: `health-app-svc`
@@ -100,7 +100,7 @@ aws ecs describe-task-definition \\
 確認観点（パッと見る順）：
 
 1. containerDefinitions の `name` が `health-app` か
-2. `image` が `077024045672.dkr.ecr.ap-northeast-1.amazonaws.com/health-app:...` になっているか
+2. `image` が `<AWS_ACCOUNT_ID>.dkr.ecr.ap-northeast-1.amazonaws.com/health-app:...` になっているか
 3. `:...`（タグ）が “戻したい版” と一致しているか
 - `latest` は判定が曖昧になりやすい
 - コミットSHA等の一意タグなら「これに戻す」が判断しやすい
@@ -184,7 +184,7 @@ curl -f http://<PublicIP>:8080/health
 
 「想定通り」の判断軸（初心者用・短縮）：
 
-- `077024045672`（アカウント） / `ap-northeast-1`（リージョン） / `health-app`（repo）になっているか
+- `<AWS_ACCOUNT_ID>`（アカウント） / `ap-northeast-1`（リージョン） / `health-app`（repo）になっているか
 - タグ（`:xxxx`）が “戻したい版” を示しているか
     - `latest` は曖昧（ただし直前の安定revisionに戻すなら運用上は成立する）
     - SHAタグ等なら判断が簡単
