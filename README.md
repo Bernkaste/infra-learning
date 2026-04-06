@@ -68,3 +68,5 @@
     - docs/step3-2_ecs-cloudwatch-logs.md
     - docs/step4_ecs-fargate-manual.md
     - docs/step5_ci-github-actions.md
+    - docs/incident-postmortem-template.md（ポストモーテムひな型）
+    - docs/incident-postmortem-guide.md（ポストモーテムの書き方・ルール）
