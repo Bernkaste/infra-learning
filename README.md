@@ -68,5 +68,9 @@
     - docs/step3-2_ecs-cloudwatch-logs.md
     - docs/step4_ecs-fargate-manual.md
     - docs/step5_ci-github-actions.md
+    - docs/step6-1&2_ci-cd-ecr-ecs.md
+    - docs/step6-3_ecs-rollback.md
+    - docs/step7_oidc-role-privilege.md
     - docs/incident-postmortem-template.md（ポストモーテムひな型）
     - docs/incident-postmortem-guide.md（ポストモーテムの書き方・ルール）
+    - docs/terraform-module-strategy.md
