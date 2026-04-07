@@ -87,8 +87,8 @@ jobs:
           script: |
             const fs = require("fs");
 
-            // defaults.run.working-directory を固定しているので plan.txt はカレントにある想定
-            const plan = fs.readFileSync("plan.txt", "utf8");
+            // run ステップの working-directory は効かない可能性があるので、repo root からのパスで読む
+            const plan = fs.readFileSync("aws-terraform/step9-1/plan.txt", "utf8");
 
             // GitHubコメントの上限対策（長すぎると投稿失敗する）
             const max = 60000;
