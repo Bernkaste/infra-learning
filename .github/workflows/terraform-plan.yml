@@ -1,15 +1,22 @@
+# 目的：Pull Request を作る/更新するだけで Terraform の fmt/validate/plan を回し、
+#      plan結果を PR コメントとして可視化する。
+
 name: Terraform Plan (PR)
 
 on:
   pull_request:
+    # PRで毎回走ると重いので、Terraform対象ディレクトリ配下に変更がある時だけ走らせる
     paths:
       - "aws-terraform/step9-1/**"
       - ".github/workflows/terraform-plan.yml"
 
 permissions:
-  id-token: write       # OIDCでAssumeRoleするために必須
-  contents: read        # actions/checkoutに必要
-  pull-requests: write  # PRにコメントするために必要
+  # OIDC で AWS の IAM Role を AssumeRole するために必須
+  id-token: write
+  # actions/checkout が repo を読むために必要
+  contents: read
+  # PRにコメントを書くために必要
+  pull-requests: write
 
 jobs:
   plan:
@@ -18,55 +25,64 @@ jobs:
     defaults:
       run:
         shell: bash
+        # Terraform を実行するディレクトリを固定（迷い/事故防止）
+        # ※ここを固定することで plan.txt などの出力先もこのディレクトリになる
         working-directory: aws-terraform/step9-1
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Terraformのバージョン固定（ローカルとズレてplan差分が変わる事故を防ぐ）
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
+          # ローカルとズレると plan 差分が変わるのでバージョン固定
           terraform_version: 1.6.6
 
-      # AWS認証（OIDC）
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
+          # GitHub Actions の Variables で管理している Role ARN を参照する
           role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
           aws-region: ap-northeast-1
 
       - name: Terraform Init
         run: terraform init -input=false
 
-      # fmtは「差分があったら落とす」。チーム運用感が出る
       - name: Terraform Format Check
+        # -check は「フォーマット差分があれば失敗にする」モード（CI向け）
         run: terraform fmt -check -recursive
 
       - name: Terraform Validate
         run: terraform validate
 
-      # plan結果をファイルに吐く（あとでPRコメントに貼る）
       - name: Terraform Plan
+        # 重要：以前の "terraform plan | tee plan.txt" だと
+        # - plan が失敗した時に plan.txt が作られず、後続の PR コメントが ENOENT で落ちる
+        # 対策：成功した時だけ確実に plan.txt を作れるように
+        #   1) plan結果をバイナリ(tfplan)に保存
+        #   2) show でテキスト化して plan.txt を作成
         run: |
-          terraform plan -no-color -input=false | tee plan.txt
+          terraform plan -no-color -input=false -out=tfplan
+          terraform show -no-color tfplan > plan.txt
 
       - name: Comment plan on PR
+        # 重要：plan が失敗した時は、このステップ自体をスキップ（ENOENT回避）
+        if: $ success() 
         uses: actions/github-script@v7
         with:
           script: |
-            const fs = require('fs');
+            const fs = require("fs");
 
-            // defaults.run.working-directory を使ってるので、ここは plan.txt でOK
-            const plan = fs.readFileSync('plan.txt', 'utf8');
+            // working-directory を固定しているので plan.txt はカレントにある想定
+            const plan = fs.readFileSync("plan.txt", "utf8");
 
-            // 長すぎるとコメントできないので上限をかける
+            // GitHubのコメントは長すぎると失敗するので上限を設定
             const max = 60000;
-            const bodyPlan = plan.length > max
-              ? plan.slice(0, max) + "\n\n...(truncated)"
-              : plan;
+            const bodyPlan =
+              plan.length > max ? plan.slice(0, max) + "\n\n...(truncated)" : plan;
 
+            // Markdownコメント本文（折りたたみ + コードブロック）
             const body = [
               "## Terraform Plan (aws-terraform/step9-1)",
               "",
@@ -80,7 +96,7 @@ jobs:
               "</details>",
               "",
               "- Backend: S3 + DynamoDB",
-              "- Trigger: pull_request"
+              "- Trigger: pull_request",
             ].join("\n");
 
             const { owner, repo } = context.repo;
@@ -90,5 +106,5 @@ jobs:
               owner,
               repo,
               issue_number,
-              body
+              body,
             });
