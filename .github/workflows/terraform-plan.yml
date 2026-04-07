@@ -7,13 +7,14 @@ on:
       - ".github/workflows/terraform-plan.yml"
 
 permissions:
-  id-token: write       # OIDCでAWSにAssumeRoleするために必須
-  contents: read        # checkoutに必要
+  id-token: write       # OIDCでAssumeRoleするために必須
+  contents: read        # actions/checkoutに必要
   pull-requests: write  # PRにコメントするために必要
 
 jobs:
   plan:
     runs-on: ubuntu-latest
+
     defaults:
       run:
         shell: bash
@@ -23,30 +24,26 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # Terraformのバージョン固定（ローカルとズレてplan差分が変わる事故を防ぐ）
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.6.6
 
-      # AWS認証（OIDC）
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: $ vars.AWS_ROLE_ARN 
           aws-region: ap-northeast-1
 
       - name: Terraform Init
         run: terraform init -input=false
 
-      # fmtは「差分があったら落とす」。チーム運用感が出る
       - name: Terraform Format Check
         run: terraform fmt -check -recursive
 
       - name: Terraform Validate
         run: terraform validate
 
-      # plan結果をファイルに吐く（あとでPRコメントに貼る）
       - name: Terraform Plan
         run: |
           terraform plan -no-color -input=false | tee plan.txt
@@ -57,35 +54,34 @@ jobs:
           script: |
             const fs = require('fs');
 
-            const plan = fs.readFileSync('aws-terraform/step9-1/plan.txt', 'utf8');
+            // defaults.run.working-directory を使ってるので、ここは plan.txt でOK
+            const plan = fs.readFileSync('plan.txt', 'utf8');
 
-            // 長すぎるとコメントできないので、上限をかける（だいたいOKなサイズ）
+            // 長すぎるとコメントできないので上限をかける
             const max = 60000;
             const bodyPlan = plan.length > max
-              ? plan.slice(0, max) + "\\n\\n...(truncated)"
+              ? plan.slice(0, max) + "\n\n...(truncated)"
               : plan;
 
-            const body =
-`## Terraform Plan (aws-terraform/step9-1)
-
-<details>
-<summary>Show plan</summary>
-
-\\`\\`\\`
-${bodyPlan}
-\\`\\`\\`
-
-</details>
-
-- Backend: S3 + DynamoDB
-- Trigger: pull_request
-`;
+            const body = [
+              "## Terraform Plan (aws-terraform/step9-1)",
+              "",
+              "<details>",
+              "<summary>Show plan</summary>",
+              "",
+              "```",
+              bodyPlan,
+              "```",
+              "",
+              "</details>",
+              "",
+              "- Backend: S3 + DynamoDB",
+              "- Trigger: pull_request"
+            ].join("\n");
 
             const { owner, repo } = context.repo;
             const issue_number = context.issue.number;
 
-            // 何度も更新されるので「同じworkflow名のコメントがあれば更新」したいが、
-            // まずはシンプルに毎回新規コメントでOK（完成後に改善できる）
             await github.rest.issues.createComment({
               owner,
               repo,
