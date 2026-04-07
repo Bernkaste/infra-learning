@@ -68,7 +68,7 @@ jobs:
 
       - name: Comment plan on PR
         # 重要：plan が失敗した時は、このステップ自体をスキップ（ENOENT回避）
-        if: $ success() 
+        if: ${{ success() }}
         uses: actions/github-script@v7
         with:
           script: |
