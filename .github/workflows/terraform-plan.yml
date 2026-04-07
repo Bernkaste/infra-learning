@@ -1,32 +1,34 @@
-# 目的：Pull Request を作る/更新するだけで Terraform の fmt/validate/plan を回し、
-#      plan結果を PR コメントとして可視化する。
+# 目的：
+# - PRを作る/更新するだけで terraform fmt/validate/plan を自動実行
+# - plan結果を PR コメントに貼り付けてレビューを楽にする
+#
+# 今回入れている重要な改善：
+# - plan.txt が無くて落ちる(ENOENT)を防ぐ
+#   -> plan が成功したときだけ plan.txt を必ず生成し、コメントも成功時だけ実行
+# - 「どのディレクトリで実行してるか」を固定し、迷子にならないようにする
 
 name: Terraform Plan (PR)
 
 on:
   pull_request:
-    # PRで毎回走ると重いので、Terraform対象ディレクトリ配下に変更がある時だけ走らせる
+    # Terraform対象とworkflow変更時だけ回す（無駄実行を減らす）
     paths:
       - "aws-terraform/step9-1/**"
       - ".github/workflows/terraform-plan.yml"
 
 permissions:
-  # OIDC で AWS の IAM Role を AssumeRole するために必須
-  id-token: write
-  # actions/checkout が repo を読むために必要
-  contents: read
-  # PRにコメントを書くために必要
-  pull-requests: write
+  id-token: write       # OIDCでAWSのRoleをAssumeするのに必須
+  contents: read        # checkout用
+  pull-requests: write  # PRコメント投稿用
 
 jobs:
   plan:
     runs-on: ubuntu-latest
 
+    # ここで Terraform の作業ディレクトリを固定する
     defaults:
       run:
         shell: bash
-        # Terraform を実行するディレクトリを固定（迷い/事故防止）
-        # ※ここを固定することで plan.txt などの出力先もこのディレクトリになる
         working-directory: aws-terraform/step9-1
 
     steps:
@@ -36,53 +38,63 @@ jobs:
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
-          # ローカルとズレると plan 差分が変わるのでバージョン固定
+          # ローカルと合わせる（差分ブレ防止）
           terraform_version: 1.6.6
 
       - name: Configure AWS Credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # GitHub Actions の Variables で管理している Role ARN を参照する
-          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }}
+          # ここは GitHub Actions の Variables を参照する
+          role-to-assume: ${{ vars.AWS_ROLE_TO_ASSUME }} 
           aws-region: ap-northeast-1
 
       - name: Terraform Init
         run: terraform init -input=false
 
       - name: Terraform Format Check
-        # -check は「フォーマット差分があれば失敗にする」モード（CI向け）
+        # fmt差分があったらCIを落とす（チーム運用っぽい）
         run: terraform fmt -check -recursive
 
       - name: Terraform Validate
         run: terraform validate
 
-      - name: Terraform Plan
-        # 重要：以前の "terraform plan | tee plan.txt" だと
-        # - plan が失敗した時に plan.txt が作られず、後続の PR コメントが ENOENT で落ちる
-        # 対策：成功した時だけ確実に plan.txt を作れるように
-        #   1) plan結果をバイナリ(tfplan)に保存
-        #   2) show でテキスト化して plan.txt を作成
+      - name: Terraform Plan (create plan.txt)
+        # ★ここが ENOENT 対策の本体
+        #
+        # 以前： terraform plan | tee plan.txt
+        # だと、planが失敗した場合 plan.txt が作られず、後続が ENOENT で落ちる。
+        #
+        # 対策：
+        # 1) terraform plan -out=tfplan で「成功した時だけ」plan成果物を保存
+        # 2) terraform show tfplan > plan.txt で「必ず」plan.txt を生成
         run: |
           terraform plan -no-color -input=false -out=tfplan
           terraform show -no-color tfplan > plan.txt
 
+      - name: Debug (ensure plan.txt exists)
+        # plan.txt が本当にできてるか確認（最初だけ入れてOK。動いたら消してもよい）
+        run: |
+          echo "pwd=$(pwd)"
+          ls -la
+          test -f plan.txt && echo "plan.txt exists ✅" || (echo "plan.txt missing ❌" && exit 1)
+          wc -c plan.txt || true
+
       - name: Comment plan on PR
-        # 重要：plan が失敗した時は、このステップ自体をスキップ（ENOENT回避）
-        if: ${{ success() }}
+        # ★planが成功したときだけコメントする（失敗時はスキップ）
+        if: ${{ success() }} 
         uses: actions/github-script@v7
         with:
           script: |
             const fs = require("fs");
 
-            // working-directory を固定しているので plan.txt はカレントにある想定
+            // defaults.run.working-directory を固定しているので plan.txt はカレントにある想定
             const plan = fs.readFileSync("plan.txt", "utf8");
 
-            // GitHubのコメントは長すぎると失敗するので上限を設定
+            // GitHubコメントの上限対策（長すぎると投稿失敗する）
             const max = 60000;
             const bodyPlan =
               plan.length > max ? plan.slice(0, max) + "\n\n...(truncated)" : plan;
 
-            // Markdownコメント本文（折りたたみ + コードブロック）
             const body = [
               "## Terraform Plan (aws-terraform/step9-1)",
               "",
