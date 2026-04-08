@@ -14,7 +14,7 @@
 
 ### Scope（範囲・やらないこと）
 - PR時点では `apply` は実行しない（planまで）
-- 対象：Terraform ディレクトリ（例：`infra-learning/aws-terraform/step9-1/`）
+- 対象：Terraform ディレクトリ（`infra-learning/aws-terraform/step9-1/`）
 - plan をCI上で成立させるため、Terraform state を remote backend（S3）に移行し、ロックに DynamoDB を利用する（S3 + DynamoDB）
 
 ---
@@ -42,7 +42,7 @@
 
 ### 全体構成
 - Terraform backend：S3（state保存） + DynamoDB（state lock）
-- GitHub Actions：OIDCでAWSへ認証し、PR上で `fmt/validate/plan` を実行して結果を表示
+- GitHub Actions：OIDCでAWSへ認証し、PR上で `fmt/validate/plan` を実行して結果を表示（全文は折りたたみ）
 
 ### ワークフロー（実行順）
 1. Checkout
@@ -53,25 +53,62 @@
 6. `terraform plan`
 7. plan結果をPRにコメント（またはサマリ）として投稿
 
+### ワークフローの要点
+- `terraform plan -out=tfplan` → `terraform show tfplan > plan.txt` で **plan.txt を確実に生成**
+- `actions/github-script` で `plan.txt` を読み込み、PRにコメント
+
 ---
 
 ## 結果（動いた証拠）
 
-- PRリンク：TBD
-- Actions実行ログ：TBD
-- PRに出力された plan の例：TBD
-	- 要約（例：X to add / Y to change / Z to destroy）
-	- 全文（折りたたみで表示）
-- backend が S3 + DynamoDB であること：TBD（1行で記載）
+- PRリンク：https://github.com/Bernkaste/infra-learning/pull/31
+- Actions実行ログ：https://github.com/Bernkaste/infra-learning/actions/runs/24076341741
+- PRに出力された plan の例：
+### PRコメント（plan出力例）
+
+<details>
+<summary>Terraform Plan (aws-terraform/step9-1)</summary>
+
+Terraform used the selected providers to generate the following execution
+plan. Resource actions are indicated with the following symbols:
+  ~ update in-place
+
+Terraform will perform the following actions:
+
+  # aws_ecs_service.app will be updated in-place
+  ~ resource "aws_ecs_service" "app" {
+        id                                 = "arn:aws:ecs:ap-northeast-1:077024045672:service/infra-learning/health-app-svc"
+        name                               = "health-app-svc"
+        tags                               = {
+            "Managed" = "terraform"
+            "Project" = "infra-learning"
+            "Step"    = "9-1"
+        }
+      ~ task_definition                    = "arn:aws:ecs:ap-northeast-1:077024045672:task-definition/health-app-task:12" -> "arn:aws:ecs:ap-northeast-1:077024045672:task-definition/health-app-task:9"
+        # (16 unchanged attributes hidden)
+
+        # (3 unchanged blocks hidden)
+    }
+
+Plan: 0 to add, 1 to change, 0 to destroy.
+
+</details>
+
+- Backend: S3 + DynamoDB
+- Trigger: pull_request
 
 ---
 
-## 学び（詰まり→原因→対処、次の改善案）
+## 学び（詰まり→原因→対処）
 
-- ローカルstateのままだとCI上のplanが安定しない → stateを remote backend（S3）へ移行する必要がある
-- OIDC認証は secrets 不要で安全だが、権限が強すぎると危険 → 最小権限を意識したIAM設計が重要
-- plan結果の見せ方（要約 + 全文を折りたたみ）で、レビュー体験が“チーム運用”に近づく
+- `defaults.run.working-directory` は `run:` には効くが、`uses:` ステップ（例：`actions/github-script`）ではカレントがズレることがある  
+  → `readFileSync("aws-terraform/step9-1/plan.txt")` のように **repo root からのパスで読む**と安定する
+- plan結果をPRで“信用できる形”にするには state の共有が必要  
+  → S3 backend + DynamoDB lock に移行すると、CIでも同じ前提で plan が出せる
+- plan全文は長くなりやすい  
+  → 折りたたみ（`<details>`） + コメント上限対策（truncation）を設けることで、チーム運用を見据えてレビューしやすい見せ方にしている
 
 ### 次の改善案（任意）
 - ブランチ保護で「Terraform Plan」を必須チェック化
+　→mainにマージするにはTerraform Planワークフローが成功していることを必須条件にする
 - 変更の種類に応じて（destroy含む等）注意喚起を自動で付ける
