@@ -110,5 +110,5 @@ Plan: 0 to add, 1 to change, 0 to destroy.
 
 ### 次の改善案（任意）
 - ブランチ保護で「Terraform Plan」を必須チェック化
-　→mainにマージするにはTerraform Planワークフローが成功していることを必須条件にする
+　→ mainにマージするにはTerraform Planワークフローが成功していることを必須条件にする
 - 変更の種類に応じて（destroy含む等）注意喚起を自動で付ける
