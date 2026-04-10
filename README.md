@@ -75,4 +75,6 @@
     - docs/incident-postmortem-guide.md（ポストモーテムの書き方・ルール）
     - docs/terraform-module-strategy.md
 
-![Architecture](./architecture.svg)
+
+# 構成図
+![構成図](./architecture.drawio.svg)
